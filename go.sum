@@ -1,0 +1,6 @@
+github.com/Alena557miles/webservergo v0.0.0-20221205075602-bee05d5cb5e5 h1:NBtxIW5kx89DLws3GnjoiFRC46hUUOLrPsrzjpDDDB0=
+github.com/Alena557miles/webservergo v0.0.0-20221205075602-bee05d5cb5e5/go.mod h1:lL2/9JRBS5nB9CsO5mmLlz6l/gl4ixtDRa67cQ3rLfw=
+github.com/go-sql-driver/mysql v1.7.0 h1:ueSltNNllEqE3qcWBTD0iQd3IpL/6U+mJxLkazJ7YPc=
+github.com/go-sql-driver/mysql v1.7.0/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=
+github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
+github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
