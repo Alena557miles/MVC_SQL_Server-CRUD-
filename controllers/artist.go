@@ -3,6 +3,7 @@ package controllers
 import (
 	"creator/database"
 	"creator/models"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -29,15 +30,30 @@ func (ac *ArtistController) RegisterActions() {
 	ac.router.HandleFunc("/artist/register/{artist}/{gallery}", ac.ArtistRegistration)
 }
 
-func (ac *ArtistController) CreateArtist(a *models.Artist) {
-	ac.artists = append(ac.artists, a)
+func (ac *ArtistController) CreateArtistDB(db *sql.DB, artistName string) error {
+	_, err := db.Exec(`INSERT INTO artists (artist_name) VALUES (?)`, artistName)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	return nil
 }
 
-func (ac *ArtistController) FindArtist(name string) *models.Artist {
-	for _, artist := range ac.artists {
-		if artist.Name == name {
-			return artist
-		}
+func (ac *ArtistController) FindArtistDB(db *sql.DB, artistName string) (*models.Artist, error) {
+	artist := &models.Artist{}
+	err := db.QueryRow(`SELECT artists.id FROM artists WHERE artists.artist_name = ?`, artistName).Scan(&artist.ID)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	return artist, nil
+}
+
+func (ac *ArtistController) RegisterArtistToGallery(db *sql.DB, artist *models.Artist, gallery *models.Gallery) error {
+	_, err := db.Exec(`INSERT INTO artist_gallery VALUES (?,?)`, artist.ID, gallery.ID)
+	if err != nil {
+		log.Fatal(err)
+		return err
 	}
 	return nil
 }
@@ -46,7 +62,6 @@ func (ac *ArtistController) Registration(rw http.ResponseWriter, r *http.Request
 	var vars map[string]string = mux.Vars(r)
 	var artistName string = vars["artist"]
 	artist := &models.Artist{Name: artistName, OnGallery: false}
-	ac.CreateArtist(artist)
 
 	db, err := database.Connect()
 	if err != nil {
@@ -55,8 +70,7 @@ func (ac *ArtistController) Registration(rw http.ResponseWriter, r *http.Request
 	}
 	defer db.Close()
 	database.PingDB(db)
-
-	_, err = db.Exec(`INSERT INTO artists (artist_name) VALUES (?)`, artistName)
+	err = ac.CreateArtistDB(db, artistName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,12 +86,6 @@ func (ac *ArtistController) ArtistRegistration(rw http.ResponseWriter, r *http.R
 	var vars map[string]string = mux.Vars(r)
 	var artistName string = vars["artist"]
 	var galleryName string = vars["gallery"]
-	artist := ac.FindArtist(artistName)
-	if err := ac.FindArtist(artistName); err != nil {
-		galleryC := &GalleryController{}
-		gallery := galleryC.FindGallery(galleryName)
-		galleryC.RegisterArtist(gallery, artist)
-	}
 
 	db, err := database.Connect()
 	if err != nil {
@@ -87,22 +95,13 @@ func (ac *ArtistController) ArtistRegistration(rw http.ResponseWriter, r *http.R
 	defer db.Close()
 	database.PingDB(db)
 
-	// find Gallery ID in DB
-	g := models.Gallery{}
-	err = db.QueryRow(`SELECT galleries.id FROM galleries WHERE galleries.gallery_name = ?`, galleryName).Scan(&g.ID)
+	galleryC := &GalleryController{}
+	gallery, err := galleryC.FindGalleryDB(db, galleryName)
+	artist, err := ac.FindArtistDB(db, artistName)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// find Artist ID in DB
-	artst := models.Artist{}
-	err = db.QueryRow(`SELECT artists.id FROM artists WHERE artists.artist_name = ?`, artistName).Scan(&artst.ID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// pass data to table artist-art
-	_, err = db.Exec(`INSERT INTO artist_gallery VALUES (?,?)`, artst.ID, g.ID)
+	err = ac.RegisterArtistToGallery(db, artist, gallery)
 	if err != nil {
 		log.Fatal(err)
 	}
