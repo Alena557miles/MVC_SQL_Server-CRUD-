@@ -94,10 +94,50 @@ func (ac *ArtController) AssignArt(rw http.ResponseWriter, r *http.Request) {
 		artistC := &ArtistController{}
 		artist := artistC.FindArtist(artistName)
 		if err := artistC.FindArtist(artistName); err != nil {
-			//assign an art to the Artist and
 			ac.AssignedArtToArtist(art, artist)
 		}
 	}
+
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatalf("SQL DB Connection Failed")
+		return
+	}
+	defer db.Close()
+	database.PingDB(db)
+
+	// find Art ID in DB
+	row, err := db.Query(`SELECT arts.id FROM arts WHERE arts.art_name = ?`, artName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row.Next()
+	a := models.Art{}
+	err = row.Scan(&a.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row.Close()
+
+	// find Artist ID in DB
+	rowArtist, err := db.Query(`SELECT artists.id FROM artists WHERE artists.artist_name = ?`, artistName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rowArtist.Next()
+	artst := models.Artist{}
+	err = rowArtist.Scan(&artst.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rowArtist.Close()
+
+	// pass data to table artist-art
+	_, err = db.Exec(`INSERT INTO artist_art VALUES (?,?)`, artst.ID, a.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	resp := make(map[string]string)
 	resp["message"] = `Art: ` + artName + ` is assigned to Artist:` + artistName
 	jsonResp, err := json.Marshal(resp)

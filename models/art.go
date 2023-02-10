@@ -1,7 +1,7 @@
 package models
 
 type Art struct {
-	Id    int    `json:"art_id"`
+	ID    int    `json:"art_id"`
 	Name  string `json:"art_name"`
 	Owner string `json:"art_owner"`
 }

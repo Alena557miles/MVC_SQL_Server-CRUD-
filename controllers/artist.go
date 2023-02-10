@@ -78,6 +78,35 @@ func (ac *ArtistController) ArtistRegistration(rw http.ResponseWriter, r *http.R
 		gallery := galleryC.FindGallery(galleryName)
 		galleryC.RegisterArtist(gallery, artist)
 	}
+
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatalf("SQL DB Connection Failed")
+		return
+	}
+	defer db.Close()
+	database.PingDB(db)
+
+	// find Gallery ID in DB
+	g := models.Gallery{}
+	err = db.QueryRow(`SELECT galleries.id FROM galleries WHERE galleries.gallery_name = ?`, galleryName).Scan(&g.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// find Artist ID in DB
+	artst := models.Artist{}
+	err = db.QueryRow(`SELECT artists.id FROM artists WHERE artists.artist_name = ?`, artistName).Scan(&artst.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// pass data to table artist-art
+	_, err = db.Exec(`INSERT INTO artist_gallery VALUES (?,?)`, artst.ID, g.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	resp := make(map[string]string)
 	resp["message"] = `Artist: ` + artistName + `is registered on Gallery:` + galleryName
 	jsonResp, err := json.Marshal(resp)

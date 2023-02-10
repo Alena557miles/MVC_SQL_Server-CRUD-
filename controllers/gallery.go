@@ -28,6 +28,10 @@ func (gc *GalleryController) RegisterActions() {
 	// DELETE AN ARTIST FROM GALLERY
 	// localhost:8080/artist/delete/Fillip/Tokio
 	gc.router.HandleFunc("/artist/delete/{artist}/{gallery}", gc.RemoveArtistFromGal)
+
+	// RENAME GALLERY
+	// localhost:8080/renamegallery/Tokio/JapaneTreasure
+	gc.router.HandleFunc("/renamegallery/{gallery}/{newgallery}", gc.RemoveArtistFromGal)
 }
 
 func (gc *GalleryController) CreateGallery(g *models.Gallery) {
@@ -41,9 +45,7 @@ func (gc *GalleryController) FindGallery(name string) *models.Gallery {
 	}
 	return nil
 }
-
 func (gc *GalleryController) RegisterArtist(gallery *models.Gallery, artist *models.Artist) {
-
 	if len(artist.Arts) > 0 {
 		gc.Galleries = append(gc.Galleries, gallery)
 		gallery.Artists = append(gallery.Artists, artist)
@@ -64,7 +66,6 @@ func (gc *GalleryController) DeleteArtist(gallery *models.Gallery, artist *model
 		}
 	}
 }
-
 func (gc *GalleryController) GalleryCreation(rw http.ResponseWriter, r *http.Request) {
 	var vars map[string]string = mux.Vars(r)
 	var galleryName string = vars["gallery"]
@@ -92,7 +93,6 @@ func (gc *GalleryController) GalleryCreation(rw http.ResponseWriter, r *http.Req
 	}
 	rw.Write(jsonResp)
 }
-
 func (gc *GalleryController) RemoveArtistFromGal(rw http.ResponseWriter, r *http.Request) {
 	var vars map[string]string = mux.Vars(r)
 	var artistName string = vars["artist"]
@@ -103,6 +103,41 @@ func (gc *GalleryController) RemoveArtistFromGal(rw http.ResponseWriter, r *http
 		gallery := gc.FindGallery(galleryName)
 		gc.DeleteArtist(gallery, artist)
 	}
+
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatalf("SQL DB Connection Failed")
+		return
+	}
+	defer db.Close()
+	database.PingDB(db)
+
+	// find Gallery ID in DB
+	g := models.Gallery{}
+	err = db.QueryRow(`SELECT galleries.id FROM galleries WHERE galleries.gallery_name = ?`, galleryName).Scan(&g.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// find Artist ID in DB
+	rowArtist, err := db.Query(`SELECT artists.id FROM artists WHERE artists.artist_name = ?`, artistName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rowArtist.Next()
+	artst := models.Artist{}
+	err = rowArtist.Scan(&artst.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rowArtist.Close()
+
+	// delete an Artist from Gallery
+	_, err = db.Exec(`DELETE FROM artist_gallery WHERE artist_gallery.artist_id = ?`, artst.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	resp := make(map[string]string)
 	resp["message"] = `Artist:` + artistName + `is deleted from Gallery:` + galleryName
 	jsonResp, err := json.Marshal(resp)
@@ -110,4 +145,56 @@ func (gc *GalleryController) RemoveArtistFromGal(rw http.ResponseWriter, r *http
 		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
 	}
 	rw.Write(jsonResp)
+}
+
+func (gc *GalleryController) GalleryUpdate(rw http.ResponseWriter, r *http.Request) {
+	var vars map[string]string = mux.Vars(r)
+	var galleryName string = vars["gallery"]
+	var newGalleryName string = vars["newgallery"]
+
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatalf("SQL DB Connection Failed")
+		return
+	}
+	defer db.Close()
+	database.PingDB(db)
+
+	//// find Gallery ID in DB second way
+	//g := models.Gallery{}
+	//err = db.QueryRow(`SELECT galleries.id FROM galleries WHERE galleries.gallery_name = ?`, galleryName).Scan(&g.ID)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	// find GAllery ID in DB
+	row, err := db.Query(`SELECT galleries.id FROM galleries WHERE galleries.gallery_name = ?`, galleryName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row.Next()
+	g := models.Artist{}
+	err = row.Scan(&g.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row.Close()
+	log.Println(g)
+	//// update gallery name
+	//_, err = db.Exec(`UPDATE galleries SET gallery_name = ? WHERE gallery_id = ?`, newGalleryName, g.ID)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	resp := make(map[string]string)
+	resp["message"] = `Gallery ` + galleryName + ` was renamed to ` + newGalleryName + `successfully`
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+	}
+	rw.Write(jsonResp)
+}
+
+func (gc *GalleryController) UpdateGallery(name string) {
+
 }
