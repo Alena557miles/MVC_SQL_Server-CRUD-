@@ -3,7 +3,6 @@ package controllers
 import (
 	"creator/database"
 	"creator/models"
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -30,30 +29,51 @@ func (ac *ArtistController) RegisterActions() {
 	ac.router.HandleFunc("/artist/register/{artist}/{gallery}", ac.ArtistRegistration)
 }
 
-func (ac *ArtistController) CreateArtistDB(db *sql.DB, artistName string) error {
-	_, err := db.Exec(`INSERT INTO artists (artist_name) VALUES (?)`, artistName)
+func (ac *ArtistController) CreateArtistDB(artistName string) error {
+	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Println("SQL DB Connection Failed")
 		return err
+	}
+	defer db.Close()
+	database.PingDB(db)
+	_, err1 := db.Exec(`INSERT INTO artists (artist_name) VALUES (?)`, artistName)
+	if err1 != nil {
+		log.Println(err1)
+		return err1
 	}
 	return nil
 }
 
-func (ac *ArtistController) FindArtistDB(db *sql.DB, artistName string) (*models.Artist, error) {
-	artist := &models.Artist{}
-	err := db.QueryRow(`SELECT artists.id FROM artists WHERE artists.artist_name = ?`, artistName).Scan(&artist.ID)
+func (ac *ArtistController) FindArtistDB(artistName string) (*models.Artist, error) {
+	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Println("SQL DB Connection Failed")
 		return nil, err
+	}
+	defer db.Close()
+	database.PingDB(db)
+	artist := &models.Artist{}
+	err1 := db.QueryRow(`SELECT artists.id FROM artists WHERE artists.artist_name = ?`, artistName).Scan(&artist.ID)
+	if err1 != nil {
+		log.Println(err1)
+		return nil, err1
 	}
 	return artist, nil
 }
 
-func (ac *ArtistController) RegisterArtistToGallery(db *sql.DB, artist *models.Artist, gallery *models.Gallery) error {
-	_, err := db.Exec(`INSERT INTO artist_gallery VALUES (?,?)`, artist.ID, gallery.ID)
+func (ac *ArtistController) RegisterArtistToGallery(artist *models.Artist, gallery *models.Gallery) error {
+	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Println("SQL DB Connection Failed")
 		return err
+	}
+	defer db.Close()
+	database.PingDB(db)
+	_, err1 := db.Exec(`INSERT INTO artist_gallery VALUES (?,?)`, artist.ID, gallery.ID)
+	if err1 != nil {
+		log.Println(err1)
+		return err1
 	}
 	return nil
 }
@@ -63,14 +83,7 @@ func (ac *ArtistController) Registration(rw http.ResponseWriter, r *http.Request
 	var artistName string = vars["artist"]
 	artist := &models.Artist{Name: artistName, OnGallery: false}
 
-	db, err := database.Connect()
-	if err != nil {
-		log.Fatalf("SQL DB Connection Failed")
-		return
-	}
-	defer db.Close()
-	database.PingDB(db)
-	err = ac.CreateArtistDB(db, artistName)
+	err := ac.CreateArtistDB(artistName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -87,23 +100,15 @@ func (ac *ArtistController) ArtistRegistration(rw http.ResponseWriter, r *http.R
 	var artistName string = vars["artist"]
 	var galleryName string = vars["gallery"]
 
-	db, err := database.Connect()
-	if err != nil {
-		log.Fatalf("SQL DB Connection Failed")
-		return
-	}
-	defer db.Close()
-	database.PingDB(db)
-
 	galleryC := &GalleryController{}
-	gallery, err := galleryC.FindGalleryDB(db, galleryName)
-	artist, err := ac.FindArtistDB(db, artistName)
+	gallery, err := galleryC.FindGalleryDB(galleryName)
+	artist, err := ac.FindArtistDB(artistName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = ac.RegisterArtistToGallery(db, artist, gallery)
-	if err != nil {
-		log.Fatal(err)
+	err1 := ac.RegisterArtistToGallery(artist, gallery)
+	if err1 != nil {
+		log.Fatal(err1)
 	}
 
 	resp := make(map[string]string)

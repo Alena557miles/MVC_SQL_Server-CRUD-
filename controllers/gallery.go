@@ -3,7 +3,6 @@ package controllers
 import (
 	"creator/database"
 	"creator/models"
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -34,35 +33,64 @@ func (gc *GalleryController) RegisterActions() {
 	gc.router.HandleFunc("/renamegallery/{gallery}/{newgallery}", gc.GalleryUpdate)
 }
 
-func (gc *GalleryController) CreateGallery(db *sql.DB, g *models.Gallery) {
-	_, err := db.Exec(`INSERT INTO galleries (gallery_name) VALUES (?)`, g.Name)
+func (gc *GalleryController) CreateGallery(g *models.Gallery) error {
+	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
-
-	}
-}
-func (gc *GalleryController) FindGalleryDB(db *sql.DB, galleryName string) (*models.Gallery, error) {
-	g := &models.Gallery{}
-	err := db.QueryRow(`SELECT galleries.id FROM galleries WHERE galleries.gallery_name = ?`, galleryName).Scan(&g.ID)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-	return g, nil
-}
-func (gc *GalleryController) UpdateGalleryDB(db *sql.DB, g *models.Gallery, newGalleryName string) error {
-	_, err := db.Exec(`UPDATE galleries SET gallery_name = ? WHERE id = ?`, newGalleryName, g.ID)
-	if err != nil {
-		log.Fatal(err)
+		log.Println("SQL DB Connection Failed")
 		return err
+	}
+	defer db.Close()
+	database.PingDB(db)
+	_, err1 := db.Exec(`INSERT INTO galleries (gallery_name) VALUES (?)`, g.Name)
+	if err1 != nil {
+		log.Fatal(err1)
+		return err1
 	}
 	return nil
 }
-func (gc *GalleryController) DeleteArtistDB(db *sql.DB, artist *models.Artist, gallery *models.Gallery) error {
-	_, err := db.Exec(`DELETE FROM artist_gallery WHERE artist_gallery.artist_id = ? and artist_gallery.gallery_id = ?`, artist.ID, gallery.ID)
+func (gc *GalleryController) FindGalleryDB(galleryName string) (*models.Gallery, error) {
+	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Println("SQL DB Connection Failed")
+		return nil, err
+	}
+	defer db.Close()
+	database.PingDB(db)
+	g := &models.Gallery{}
+	err1 := db.QueryRow(`SELECT galleries.id FROM galleries WHERE galleries.gallery_name = ?`, galleryName).Scan(&g.ID)
+	if err1 != nil {
+		log.Println(err1)
+		return nil, err1
+	}
+	return g, nil
+}
+func (gc *GalleryController) UpdateGalleryDB(g *models.Gallery, newGalleryName string) error {
+	db, err := database.Connect()
+	if err != nil {
+		log.Println("SQL DB Connection Failed")
 		return err
+	}
+	defer db.Close()
+	database.PingDB(db)
+	_, err1 := db.Exec(`UPDATE galleries SET gallery_name = ? WHERE id = ?`, newGalleryName, g.ID)
+	if err1 != nil {
+		log.Println(err1)
+		return err1
+	}
+	return nil
+}
+func (gc *GalleryController) DeleteArtistDB(artist *models.Artist, gallery *models.Gallery) error {
+	db, err := database.Connect()
+	if err != nil {
+		log.Println("SQL DB Connection Failed")
+		return err
+	}
+	defer db.Close()
+	database.PingDB(db)
+	_, err1 := db.Exec(`DELETE FROM artist_gallery WHERE artist_gallery.artist_id = ? and artist_gallery.gallery_id = ?`, artist.ID, gallery.ID)
+	if err1 != nil {
+		log.Println(err1)
+		return err1
 	}
 	return nil
 }
@@ -72,15 +100,7 @@ func (gc *GalleryController) GalleryCreation(rw http.ResponseWriter, r *http.Req
 	var galleryName string = vars["gallery"]
 
 	gallery := &models.Gallery{Name: galleryName}
-	db, err := database.Connect()
-	if err != nil {
-		log.Fatalf("SQL DB Connection Failed")
-		return
-	}
-	defer db.Close()
-	database.PingDB(db)
-
-	gc.CreateGallery(db, gallery)
+	gc.CreateGallery(gallery)
 
 	resp := make(map[string]string)
 	resp["message"] = `Gallery ` + galleryName + ` created successfully`
@@ -95,25 +115,16 @@ func (gc *GalleryController) RemoveArtistFromGal(rw http.ResponseWriter, r *http
 	var vars map[string]string = mux.Vars(r)
 	var artistName string = vars["artist"]
 	var galleryName string = vars["gallery"]
-
-	db, err := database.Connect()
-	if err != nil {
-		log.Fatalf("SQL DB Connection Failed")
-		return
-	}
-	defer db.Close()
-	database.PingDB(db)
-
-	gallery, err := gc.FindGalleryDB(db, galleryName)
+	gallery, err := gc.FindGalleryDB(galleryName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	artistC := &ArtistController{}
-	artist, err := artistC.FindArtistDB(db, artistName)
+	artist, err := artistC.FindArtistDB(artistName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = gc.DeleteArtistDB(db, artist, gallery)
+	err = gc.DeleteArtistDB(artist, gallery)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -132,21 +143,13 @@ func (gc *GalleryController) GalleryUpdate(rw http.ResponseWriter, r *http.Reque
 	var galleryName string = vars["gallery"]
 	var newGalleryName string = vars["newgallery"]
 
-	db, err := database.Connect()
+	g, err := gc.FindGalleryDB(galleryName)
 	if err != nil {
-		log.Fatalf("SQL DB Connection Failed")
-		return
+		log.Println(err)
 	}
-	defer db.Close()
-	database.PingDB(db)
-
-	g, err := gc.FindGalleryDB(db, galleryName)
+	err = gc.UpdateGalleryDB(g, newGalleryName)
 	if err != nil {
-		log.Fatal(err)
-	}
-	err = gc.UpdateGalleryDB(db, g, newGalleryName)
-	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	resp := make(map[string]string)

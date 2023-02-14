@@ -24,7 +24,6 @@ func Connect() (*sql.DB, error) {
 }
 
 func PingDB(db *sql.DB) {
-	//var err error
 	pingErr := db.Ping()
 	if pingErr != nil {
 		log.Fatal(pingErr)
