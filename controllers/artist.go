@@ -85,12 +85,12 @@ func (ac *ArtistController) Registration(rw http.ResponseWriter, r *http.Request
 
 	err := ac.CreateArtistDB(artistName)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	jsonResp, err := json.Marshal(artist)
 	if err != nil {
-		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+		log.Println("Error happened in JSON marshal. Err: %s", err)
 	}
 	rw.Write(jsonResp)
 }
@@ -104,18 +104,18 @@ func (ac *ArtistController) ArtistRegistration(rw http.ResponseWriter, r *http.R
 	gallery, err := galleryC.FindGalleryDB(galleryName)
 	artist, err := ac.FindArtistDB(artistName)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	err1 := ac.RegisterArtistToGallery(artist, gallery)
 	if err1 != nil {
-		log.Fatal(err1)
+		log.Println(err1)
 	}
 
 	resp := make(map[string]string)
 	resp["message"] = `Artist: ` + artistName + `is registered on Gallery:` + galleryName
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+		log.Println("Error happened in JSON marshal. Err: %s", err)
 	}
 	rw.Write(jsonResp)
 }

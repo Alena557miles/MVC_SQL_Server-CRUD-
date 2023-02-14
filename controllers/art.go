@@ -42,7 +42,7 @@ func (ac *ArtController) CreateArtDB(artName string) error {
 	database.PingDB(db)
 	_, err1 := db.Exec(`INSERT INTO arts (art_name) VALUES (?)`, artName)
 	if err != nil {
-		log.Fatal(err1)
+		log.Println(err1)
 		return err1
 	}
 	return nil
@@ -92,7 +92,7 @@ func (ac *ArtController) ArtCreation(rw http.ResponseWriter, r *http.Request) {
 	}
 	jsonResp, err := json.Marshal(art)
 	if err != nil {
-		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+		log.Println("Error happened in JSON marshal. Err: %s", err)
 	}
 	rw.Write(jsonResp)
 }
@@ -106,19 +106,19 @@ func (ac *ArtController) AssignArt(rw http.ResponseWriter, r *http.Request) {
 	artistC := &ArtistController{}
 	artist, err := artistC.FindArtistDB(artistName)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	err = ac.AssignedArtToArtist(art, artist)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	resp := make(map[string]string)
 	resp["message"] = `Art: ` + artName + ` is assigned to Artist:` + artistName
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+		log.Println("Error happened in JSON marshal. Err: %s", err)
 	}
 	rw.Write(jsonResp)
 }

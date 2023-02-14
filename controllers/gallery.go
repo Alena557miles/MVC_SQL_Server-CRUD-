@@ -43,7 +43,7 @@ func (gc *GalleryController) CreateGallery(g *models.Gallery) error {
 	database.PingDB(db)
 	_, err1 := db.Exec(`INSERT INTO galleries (gallery_name) VALUES (?)`, g.Name)
 	if err1 != nil {
-		log.Fatal(err1)
+		log.Println(err1)
 		return err1
 	}
 	return nil
@@ -98,15 +98,13 @@ func (gc *GalleryController) DeleteArtistDB(artist *models.Artist, gallery *mode
 func (gc *GalleryController) GalleryCreation(rw http.ResponseWriter, r *http.Request) {
 	var vars map[string]string = mux.Vars(r)
 	var galleryName string = vars["gallery"]
-
 	gallery := &models.Gallery{Name: galleryName}
 	gc.CreateGallery(gallery)
-
 	resp := make(map[string]string)
 	resp["message"] = `Gallery ` + galleryName + ` created successfully`
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+		log.Println("Error happened in JSON marshal. Err: %s", err)
 	}
 	rw.Write(jsonResp)
 }
@@ -117,23 +115,23 @@ func (gc *GalleryController) RemoveArtistFromGal(rw http.ResponseWriter, r *http
 	var galleryName string = vars["gallery"]
 	gallery, err := gc.FindGalleryDB(galleryName)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	artistC := &ArtistController{}
 	artist, err := artistC.FindArtistDB(artistName)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
-	err = gc.DeleteArtistDB(artist, gallery)
-	if err != nil {
-		log.Fatal(err)
+	err1 := gc.DeleteArtistDB(artist, gallery)
+	if err1 != nil {
+		log.Println(err1)
 	}
 
 	resp := make(map[string]string)
 	resp["message"] = `Artist:` + artistName + `is deleted from Gallery:` + galleryName
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+		log.Println("Error happened in JSON marshal. Err: %s", err)
 	}
 	rw.Write(jsonResp)
 }
